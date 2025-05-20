@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import Database from "@tauri-apps/plugin-sql";
 import "./App.css";
 
@@ -11,42 +12,71 @@ function App() {
   const [error, setError] = useState("");
   const [editingUserId, setEditingUserId] = useState(null);
 
+  const key = "C7+fLbylnfIv/s/V1dZ/Vz1xdSwOjFEF+WYRklx5aZQ=";
+
   async function getUsers() {
     try {
-      const db = await Database.load("sqlite:test1.db");
+      const db = await Database.load("sqlite:test3.db");
       const dbUsers = await db.select("SELECT * FROM users");
-      setUsers(dbUsers);
+
+      if (!key) throw new Error("Encryption key missing");
+
+      console.log("dbUsers", dbUsers);
+      const decryptedUsers = await Promise.all(
+        dbUsers.map(async (user) => ({
+          ...user,
+          amount: user.amount
+            ? await invoke("decrypt_data", {
+                encryptedData: user.amount,
+                key,
+              })
+            : "",
+        }))
+      );
+
+      setUsers(decryptedUsers);
       setError("");
       setIsLoadingUsers(false);
     } catch (error) {
       console.error(error);
       setError("Failed to get users - check console");
+      setIsLoadingUsers(false);
     }
   }
 
   async function setUser(user) {
     try {
+      console.log("start insert");
       setIsLoadingUsers(true);
-      const db = await Database.load("sqlite:test1.db");
+      const db = await Database.load("sqlite:test3.db");
+
+      if (!key) throw new Error("Encryption key missing");
+
+      const encryptedAmount = await invoke("encrypt_data", {
+        data: user.number || "",
+        key,
+      });
+
+      console.log("encryptedAmount", encryptedAmount);
       await db.execute(
         "INSERT INTO users (name, email, amount) VALUES ($1, $2, $3)",
-        [user.name, user.email, user?.number]
+        [user.name, user.email, encryptedAmount]
       );
+
       await getUsers();
       resetForm();
     } catch (error) {
       console.error(error);
       setError("Failed to insert user - check console");
+      setIsLoadingUsers(false);
     }
   }
 
   async function updateUser(user) {
-    console.log("user", user);
     try {
       setIsLoadingUsers(true);
-      const db = await Database.load("sqlite:test1.db");
+      const db = await Database.load("sqlite:test3.db");
 
-      // Build dynamic query
       const fields = [];
       const values = [];
       let idx = 1;
@@ -60,29 +90,37 @@ function App() {
         values.push(user.email);
       }
       if (user.number !== "") {
+        const encryptedAmount = await invoke("encrypt_data", {
+          data: user.number,
+          key,
+        });
         fields.push(`amount = $${idx++}`);
-        values.push(user.number);
+        values.push(encryptedAmount);
       }
 
-      if (fields.length === 0) return;
+      if (fields.length === 0) {
+        setIsLoadingUsers(false);
+        return;
+      }
 
       values.push(user.id);
-      console.log("filed", fields, values, idx);
       const sql = `UPDATE users SET ${fields.join(", ")} WHERE id = $${idx}`;
 
       await db.execute(sql, values);
+
       await getUsers();
       resetForm();
     } catch (error) {
       console.error(error);
       setError("Failed to update user - check console");
+      setIsLoadingUsers(false);
     }
   }
 
   async function deleteUser(id) {
     try {
       setIsLoadingUsers(true);
-      const db = await Database.load("sqlite:test1.db");
+      const db = await Database.load("sqlite:test3.db");
       await db.execute("DELETE FROM users WHERE id = $1", [id]);
       await getUsers();
       setIsLoadingUsers(false);
