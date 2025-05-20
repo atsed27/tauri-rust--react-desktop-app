@@ -7,13 +7,14 @@ function App() {
   const [users, setUsers] = useState([]);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [number, setNumber] = useState("");
   const [error, setError] = useState("");
 
   async function getUsers() {
     try {
-      const db = await Database.load("sqlite:test.db");
+      const db = await Database.load("sqlite:test1.db");
       const dbUsers = await db.select("SELECT * FROM users");
-
+      console.log("get user from db", dbUsers);
       setError("");
       setUsers(dbUsers);
       setIsLoadingUsers(false);
@@ -26,12 +27,12 @@ function App() {
   async function setUser(user) {
     try {
       setIsLoadingUsers(true);
-      const db = await Database.load("sqlite:test.db");
-
-      await db.execute("INSERT INTO users (name, email) VALUES ($1, $2)", [
-        user.name,
-        user.email,
-      ]);
+      const db = await Database.load("sqlite:test1.db");
+      console.log("user", user);
+      await db.execute(
+        "INSERT INTO users (name, email, amount) VALUES ($1, $2, $3)",
+        [user.name, user.email, user?.number]
+      );
 
       getUsers().then(() => setIsLoadingUsers(false));
     } catch (error) {
@@ -46,7 +47,7 @@ function App() {
 
   return (
     <main className="container">
-      <h1>Welcome to Tauri + SQLite</h1>
+      <h1> Tauri +Vite + SQLite</h1>
 
       {isLoadingUsers ? (
         <div>Loading users...</div>
@@ -58,7 +59,7 @@ function App() {
             className="row"
             onSubmit={(e) => {
               e.preventDefault();
-              setUser({ name, email });
+              setUser({ name, email, number });
               getUsers();
             }}
           >
@@ -73,6 +74,16 @@ function App() {
               onChange={(e) => setEmail(e.currentTarget.value)}
               placeholder="Enter an email..."
             />
+
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              id="amount-input"
+              onChange={(e) => setNumber(e.currentTarget.value)}
+              placeholder="Enter an Amount..."
+            />
+
             <button type="submit">Add User</button>
           </form>
 
@@ -86,6 +97,7 @@ function App() {
                   <th>ID</th>
                   <th>Name</th>
                   <th>Email</th>
+                  <th>Amount</th>
                 </tr>
               </thead>
               <tbody>
@@ -94,6 +106,7 @@ function App() {
                     <td>{user.id}</td>
                     <td>{user.name}</td>
                     <td>{user.email}</td>
+                    <td>{user.amount}</td>
                   </tr>
                 ))}
               </tbody>
