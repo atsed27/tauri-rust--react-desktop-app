@@ -23,6 +23,27 @@ Make sure you have the following installed:
 - **Rust**: [Install here](https://www.rust-lang.org/tools/install)
 - **Tauri CLI**: Install globally
 
+---
+
+## 🚀 Get Started
+
+### Step 1: Clone the repository
+
 ```bash
-cargo install tauri-cli
+git clone https://github.com/atsed27/tauri-rust--react-desktop-app.git
+cd tauri-rust--react-desktop-app
+
+```
+
+### Step 2: Install dependencies
+
+```bash
+
+npm install
+```
+
+### Step 3: Run the app in development mode
+
+```bash
+npm run tauri build
 ```
